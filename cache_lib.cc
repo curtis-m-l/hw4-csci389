@@ -27,16 +27,17 @@ public:
       std::cout << "Data is too large to fit in the cache!\n";
       return;
     }
-    // If value we're emplacing already exists, update size
+    // If value we're emplacing already exists, calculate the size change
     auto existing_value = m_cache_vals.find(key);
+    size_type actual_size;
     if (existing_value != m_cache_vals.end()) {
-      size = size - m_cache_sizes.find(key)->second;
+      actual_size = size - m_cache_sizes.find(key)->second;
     }
     // If it fits, add it to the cache 
-    if (m_current_mem + size <= m_maxmem) {
+    if (m_current_mem + actual_size <= m_maxmem) {
       m_cache_vals.emplace(key, val);
       m_cache_sizes.emplace(key, size);
-      m_current_mem += size;
+      m_current_mem += actual_size;
       // Let the eviction policy know about the new item
       if (m_evictor != nullptr) {
         m_evictor->touch_key(key);
@@ -49,7 +50,7 @@ public:
       }
       // Otherwise, evict stuff until it fits
       else {
-        while (m_current_mem + size > m_maxmem) {
+        while (m_current_mem + actual_size > m_maxmem) {
           key_type evictedKey = m_evictor->evict();
           m_cache_vals.erase(evictedKey);
           if (m_cache_sizes.find(evictedKey) != m_cache_sizes.end()) {
@@ -63,8 +64,8 @@ public:
         // more optimal performance, but this should still be correct.
         m_cache_vals.emplace(key, val);
         m_cache_sizes.emplace(key, size);
-        m_current_mem += size;
-        m_evictor->touch_key(key);
+        m_current_mem += actual_size;
+        m_evictor->touch_key(key); 
       }
     }
   }
