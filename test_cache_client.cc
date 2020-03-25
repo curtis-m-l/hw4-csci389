@@ -22,69 +22,69 @@ using test_evictor = FIFO_Evictor;
 void cache_set(Cache& items, Cache::byte_type data, std::string name, Cache::size_type size)
 {
   /* Create an item with key 'name', value 'data', and size 'size'. Add it to the cache. */
-    Cache::val_type val = &data;
-    items.set(name, val, size);
-    std::cout << "Successfully added item of size " << size << "\n";
-    // Can't use asserts in this function, would require get.
-    // Asserted in main()
+  Cache::val_type val = &data;
+  items.set(name, val, size);
+  std::cout << "Successfully added item of size " << size << "\n";
+  // Can't use asserts in this function, would require get.
+  // Asserted in main()
 }
 
 void cache_get(Cache& items, key_type key, Cache::size_type& itemSize, Cache::size_type target_size)
 {
-    Cache::val_type got_item = items.get(key, itemSize);
-    assert(got_item != nullptr && "Cache could not retrieve requested item!\n");
-    assert(itemSize == target_size && "get() did not update size of its second param correctly!\n");
-    std::cout << key << " gotten successfully.\n";
+  Cache::val_type got_item = items.get(key, itemSize);
+  assert(got_item != nullptr && "Cache could not retrieve requested item!\n");
+  assert(itemSize == target_size && "get() did not update size of its second param correctly!\n");
+  std::cout << key << " gotten successfully.\n";
 }
 
 void cache_del(Cache& items, key_type key)
 {
-    bool delete_success = items.del(key);
-    assert(delete_success);
-    std::cout << "Deleted " << key << " from the cache.\n";
+  bool delete_success = items.del(key);
+  assert(delete_success);
+  std::cout << "Deleted " << key << " from the cache.\n";
 }
 
 void cache_space_used(Cache& items, Cache::size_type target_size)
 {
-    Cache::size_type used_space = items.space_used();
-    std::cout << "Current memory used: " << used_space << " | Expected: " << target_size << "\n";
-    assert(used_space == target_size);
+  Cache::size_type used_space = items.space_used();
+  std::cout << "Current memory used: " << used_space << " | Expected: " << target_size << "\n";
+  assert(used_space == target_size);
 }
 
 void cache_reset(Cache& items)
 {
-    items.reset();
-    assert(items.space_used() == 0);
-    std::cout << "Cache reset.\n";
+  items.reset();
+  assert(items.space_used() == 0);
+  std::cout << "Cache reset.\n";
 }
 
 void cache_get_failure(Cache& items, key_type key, Cache::size_type& itemSize)
 {
-    Cache::val_type got_item = items.get(key, itemSize);
-    assert(got_item == nullptr);
+  Cache::val_type got_item = items.get(key, itemSize);
+  assert(got_item == nullptr);
 }
 
 // TEST CASES
 
 void test_basic_operation() {
-    /* Test basic functionality of a cache with no optional parameters */
-    std::cout << "\nTesting basic operations...\n";
-    Cache items = Cache(100);
-    assert(items.space_used() == 0 && "Cache initialized at non-zero size\n");
-    Cache::size_type gotItemSize = 0;
-    // Set an item, verify that it's the right size
-    cache_set(items, 'A', "ItemA", 50);
-    cache_space_used(items, 50);
-    // Get that item, check that it's size is updated correctly
-    cache_get(items, "ItemA", gotItemSize, 50);
-    // Delete item, check that the cache is now empty
-    cache_del(items, "ItemA");
-    cache_space_used(items, 0);
-    // Set an item, reset the cache, an verify that the cache is empty
-    cache_set(items, 'B', "ItemB", 30);
-    cache_reset(items);
-    cache_space_used(items, 0);
-    items.~Cache();
+  /* Test basic functionality of a cache with no optional parameters */
+  std::cout << "\nTesting basic operations...\n";
+  Cache items = Cache(100);
+  assert(items.space_used() == 0 && "Cache initialized at non-zero size\n");
+  Cache::size_type gotItemSize = 0;
+  // Set an item, verify that it's the right size
+  cache_set(items, 'A', "ItemA", 50);
+  cache_space_used(items, 50);
+  // Get that item, check that it's size is updated correctly
+  cache_get(items, "ItemA", gotItemSize, 50);
+  // Delete item, check that the cache is now empty
+  cache_del(items, "ItemA");
+  cache_space_used(items, 0);
+  // Set an item, reset the cache, an verify that the cache is empty
+  cache_set(items, 'B', "ItemB", 30);
+  cache_reset(items);
+  cache_space_used(items, 0);
+  items.~Cache();
 }
 
 void test_modify_value() {
@@ -129,11 +129,11 @@ void test_set_object_cache_size() {
 
 void test_cache_bounds() {
   std::cout << "\nTesting cache bounds without evictor...\n";
-    /* Try adding an object to the cache that is greater than maxmem. Make sure it fails. */
-    Cache items = Cache(100);
-    cache_set(items, 'A', "ItemA", 110);
-    cache_space_used(items, 0);
-    items.~Cache();
+  /* Try adding an object to the cache that is greater than maxmem. Make sure it fails. */
+  Cache items = Cache(100);
+  cache_set(items, 'A', "ItemA", 110);
+  cache_space_used(items, 0);
+  items.~Cache();
 }
 
 void test_overflow_no_evictor() {
@@ -143,7 +143,7 @@ void test_overflow_no_evictor() {
   cache_set(items, 'A', "ItemA", 50);
   cache_set(items, 'B', "ItemB", 30);
   cache_set(items, 'C', "ItemC", 40);
-  
+
   cache_space_used(items, 80);
   items.~Cache();
 }
@@ -225,7 +225,7 @@ void test_unnecessary_eviction()
   items.~Cache();
 }
 
-void test_eviction(){
+void test_eviction() {
   std::cout << "\nDirectly testing evictor...\n";
   test_evictor evictPolicy = FIFO_Evictor();
   //Series of touchkeys/evicts to check FIFO ordering
@@ -288,18 +288,18 @@ void test_size_zero_does_not_evict() {
 
 int main(int argc, char** argv)
 {
-    test_basic_operation();
-    test_modify_value();
-    test_reduction();
-    test_set_object_cache_size();
-    test_cache_bounds();
-    test_overflow_no_evictor();
-    test_get_non_existant_item();
-    test_basic_evictor();
-    test_cache_bounds_with_evictor();
-    test_unnecessary_eviction();
-    test_eviction();
-    test_evict_all();
-    test_size_zero_does_not_evict();
-    return 0;
+  test_basic_operation();
+  test_modify_value();
+  test_reduction();
+  test_set_object_cache_size();
+  test_cache_bounds();
+  test_overflow_no_evictor();
+  test_get_non_existant_item();
+  test_basic_evictor();
+  test_cache_bounds_with_evictor();
+  test_unnecessary_eviction();
+  test_eviction();
+  test_evict_all();
+  test_size_zero_does_not_evict();
+  return 0;
 }
