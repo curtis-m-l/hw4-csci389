@@ -22,14 +22,14 @@ using tcp = net::ip::tcp;           // from <boost/asio/ip/tcp.hpp>
 class Cache::Impl {
 
 public:
-  std::string host_;
-  std::string port_;
-  auto HTTPVersion_ = 1.1;
-  // The io_context is required for all I/O
-  net::io_context ioc_;
-  // These objects perform our I/O
-  beast::tcp_stream stream_(ioc_);
-  tcp::resolver resolver_(ioc_);
+    std::string host_;
+    std::string port_;
+    auto HTTPVersion_ = 1.1;
+    // The io_context is required for all I/O
+    net::io_context ioc_;
+    // These objects perform our I/O
+    beast::tcp_stream stream_(ioc_);
+    tcp::resolver resolver_(ioc_);
 
   Impl(std::string host, std::string port) {
 
@@ -44,7 +44,7 @@ public:
   }
 
   ~Impl(){
-    // Gracefully close the socket
+      // Gracefully close the socket
       beast::error_code ec;
       stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
@@ -187,9 +187,9 @@ public:
 };
 
 Cache::Cache(size_type maxmem, 
-  float max_load_factor, 
-  Evictor* evictor, 
-  hash_func hasher) { return; }
+    float max_load_factor, 
+    Evictor* evictor, 
+    hash_func hasher) { return; }
 
 Cache::Cache(std::string host, std::string port) {
 	pImpl_ = (std::make_unique<Impl>(cache_Impl(host, port)));

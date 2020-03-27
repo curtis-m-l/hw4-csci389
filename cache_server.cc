@@ -426,10 +426,10 @@ int main(int argc, char* argv){
     // Declare the supported options.
     po::options_description desc("Allowed options");
     desc.add_options()
-      ("-s", po::value<string>()->default_value("127.0.0.1"), "define host server (default 127.0.0.1)")
-      ("-p", po::value<unsigned short>()->default_value(3618), "define port number (default 3618)")
-      ("-t", po::value<int>()->default_value(1), "define thread count (default 1)")
-      ("-m", po::value<Cache::size_type>()->default_value(100), "set maxmem (default 100)");
+        ("-s", po::value<string>()->default_value("127.0.0.1"), "define host server (default 127.0.0.1)")
+        ("-p", po::value<unsigned short>()->default_value(3618), "define port number (default 3618)")
+        ("-t", po::value<int>()->default_value(1), "define thread count (default 1)")
+        ("-m", po::value<Cache::size_type>()->default_value(100), "set maxmem (default 100)");
 
     po::variables_map vm;
     po_store(po::parse_command_line(argc, argv, desc), vm);

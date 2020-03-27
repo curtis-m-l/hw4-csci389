@@ -8,120 +8,120 @@
 
 class Cache::Impl {
 public:
-  //Our data members:
-  size_type m_current_mem;
-  std::unordered_map<key_type, val_type, hash_func> m_cache_vals;
-  std::unordered_map<key_type, size_type, hash_func> m_cache_sizes;
+    //Our data members:
+    size_type m_current_mem;
+    std::unordered_map<key_type, val_type, hash_func> m_cache_vals;
+    std::unordered_map<key_type, size_type, hash_func> m_cache_sizes;
 
-  // Initial data members/functions:
-  size_type m_maxmem;
-  Evictor* m_evictor = nullptr;
+    // Initial data members/functions:
+    size_type m_maxmem;
+    Evictor* m_evictor = nullptr;
 
-  Impl() {
-    m_current_mem = 0;
-  }
+    Impl() {
+        m_current_mem = 0;
+    }
 
-  void set(key_type key, val_type val, size_type size) {
-    // If data is larger than cache capacity
-    if (size > m_maxmem) {
-      std::cout << "Data is too large to fit in the cache!\n";
-      return;
-    }
-    // If value we're emplacing already exists, calculate the size change
-    auto existing_value = m_cache_vals.find(key);
-    size_type actual_size = size;
-    if (existing_value != m_cache_vals.end()) {
-      actual_size = size - m_cache_sizes.find(key)->second;
-      std::cout << key << " was size: " << size << ". Its new size is: " << actual_size << ".\n";
-    }
-    // If it fits, add it to the cache 
-    if (m_current_mem + actual_size <= m_maxmem) {
-      m_cache_vals.emplace(key, val);
-      m_cache_sizes.emplace(key, size);
-      m_current_mem += actual_size;
-      // Let the eviction policy know about the new item
-      if (m_evictor != nullptr) {
-        m_evictor->touch_key(key);
-      }
-    }
-    else {
-      // If we have no eviction policy, reject it
-      if (m_evictor == nullptr) {
-        std::cout << "Cache is too full!\n";
-      }
-      // Otherwise, evict stuff until it fits
-      else {
-        while (m_current_mem + actual_size > m_maxmem) {
-          key_type evictedKey = m_evictor->evict();
-          m_cache_vals.erase(evictedKey);
-          if (m_cache_sizes.find(evictedKey) != m_cache_sizes.end()) {
-            size_type sizeOfEvicted = m_cache_sizes.find(evictedKey)->second;
-            m_current_mem -= sizeOfEvicted;
-          }
-          m_cache_sizes.erase(evictedKey);
+    void set(key_type key, val_type val, size_type size) {
+        // If data is larger than cache capacity
+        if (size > m_maxmem) {
+            std::cout << "Data is too large to fit in the cache!\n";
+            return;
         }
-        // This is identical to code in an above if statement, since we've now guaranteed
-        // that the data can fit in our cache. Restructuring of this code could yield
-        // more optimal performance, but this should still be correct.
-        m_cache_vals.emplace(key, val);
-        m_cache_sizes.emplace(key, size);
-        m_current_mem += actual_size;
-        m_evictor->touch_key(key); 
-      }
+        // If value we're emplacing already exists, calculate the size change
+        auto existing_value = m_cache_vals.find(key);
+        size_type actual_size = size;
+        if (existing_value != m_cache_vals.end()) {
+            actual_size = size - m_cache_sizes.find(key)->second;
+            std::cout << key << " was size: " << size << ". Its new size is: " << actual_size << ".\n";
+      
+        // If it fits, add it to the cache 
+        if (m_current_mem + actual_size <= m_maxmem) {
+            m_cache_vals.emplace(key, val);
+            m_cache_sizes.emplace(key, size);
+            m_current_mem += actual_size;
+            // Let the eviction policy know about the new item
+            if (m_evictor != nullptr) {
+            m_evictor->touch_key(key);
+            }
+        }
+        else {
+            // If we have no eviction policy, reject it
+            if (m_evictor == nullptr) {
+            std::cout << "Cache is too full!\n";
+            }
+            // Otherwise, evict stuff until it fits
+            else {
+            while (m_current_mem + actual_size > m_maxmem) {
+                key_type evictedKey = m_evictor->evict();
+                m_cache_vals.erase(evictedKey);
+                if (m_cache_sizes.find(evictedKey) != m_cache_sizes.end()) {
+                size_type sizeOfEvicted = m_cache_sizes.find(evictedKey)->second;
+                m_current_mem -= sizeOfEvicted;
+                }
+                m_cache_sizes.erase(evictedKey);
+            }
+            // This is identical to code in an above if statement, since we've now guaranteed
+            // that the data can fit in our cache. Restructuring of this code could yield
+            // more optimal performance, but this should still be correct.
+            m_cache_vals.emplace(key, val);
+            m_cache_sizes.emplace(key, size);
+            m_current_mem += actual_size;
+            m_evictor->touch_key(key); 
+            }
+        }
     }
-  }
 
-  val_type get(key_type key, size_type& val_size) {
-    auto toRe = m_cache_vals.find(key);
-    if (toRe == m_cache_vals.end()) {
-      return nullptr;
+    val_type get(key_type key, size_type& val_size) {
+        auto toRe = m_cache_vals.find(key);
+        if (toRe == m_cache_vals.end()) {
+            return nullptr;
+        }
+        if (m_evictor != nullptr) {
+            m_evictor->touch_key(key);
+        }
+        val_size = m_cache_sizes.find(key)->second;
+        return static_cast<val_type>(toRe->second);
     }
-    if (m_evictor != nullptr) {
-      m_evictor->touch_key(key);
-    }
-    val_size = m_cache_sizes.find(key)->second;
-    return static_cast<val_type>(toRe->second);
-  }
 
-  bool del(key_type key) {
-    auto entry = m_cache_vals.find(key);
-    if (entry == m_cache_vals.end()) {
-      return false;
+    bool del(key_type key) {
+        auto entry = m_cache_vals.find(key);
+        if (entry == m_cache_vals.end()) {
+            return false;
+        }
+        else {
+        m_current_mem -= m_cache_sizes[key];
+        m_cache_vals.erase(key);
+        m_cache_sizes.erase(key);
+        return true;
+        }
     }
-    else {
-      m_current_mem -= m_cache_sizes[key];
-      m_cache_vals.erase(key);
-      m_cache_sizes.erase(key);
-      return true;
+
+    size_type space_used() {
+        return m_current_mem;
     }
-  }
 
-  size_type space_used() {
-    return m_current_mem;
-  }
-
-  void reset() {
-    m_current_mem = 0;
-    m_cache_vals.clear();
-    m_cache_sizes.clear();
-  }
+    void reset() {
+        m_current_mem = 0;
+        m_cache_vals.clear();
+        m_cache_sizes.clear();
+    }
 };
 
 Cache::Cache(size_type maxmem,
-  float max_load_factor,
-  Evictor* evictor,
-  hash_func hasher) {
-  Impl cache_Impl;
-  pImpl_ = (std::make_unique<Impl>(cache_Impl));
-  pImpl_->m_maxmem = maxmem;
-  pImpl_->m_evictor = evictor;
-  pImpl_->m_current_mem = 0;
-  std::unordered_map<key_type, val_type, hash_func> cache_vals(0, hasher);
-  std::unordered_map<key_type, size_type, hash_func> cache_sizes(0, hasher);
-  cache_vals.max_load_factor(max_load_factor);
-  cache_sizes.max_load_factor(max_load_factor);
-  pImpl_->m_cache_vals = cache_vals;
-  pImpl_->m_cache_sizes = cache_sizes;
+    float max_load_factor,
+    Evictor* evictor,
+    hash_func hasher) {
+    Impl cache_Impl;
+    pImpl_ = (std::make_unique<Impl>(cache_Impl));
+    pImpl_->m_maxmem = maxmem;
+    pImpl_->m_evictor = evictor;
+    pImpl_->m_current_mem = 0;
+    std::unordered_map<key_type, val_type, hash_func> cache_vals(0, hasher);
+    std::unordered_map<key_type, size_type, hash_func> cache_sizes(0, hasher);
+    cache_vals.max_load_factor(max_load_factor);
+    cache_sizes.max_load_factor(max_load_factor);
+    pImpl_->m_cache_vals = cache_vals;
+    pImpl_->m_cache_sizes = cache_sizes;
 }
 
 Cache::Cache(std::string host, std::string port) { return; }
