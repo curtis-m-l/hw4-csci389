@@ -6,6 +6,7 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/config.hpp>
+#include <boost/program_options.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -84,9 +85,7 @@ handle_request(
         req.method() != http::verb::head)
         return send(bad_request("Unknown HTTP-method"));
 
-    // Handle an unknown error
-    if(ec)
-        return send(server_error(ec.message()));
+    auto const size = serverCache.m_current_mem;
     
 //********************************************************************************
     // Respond to HEAD request
@@ -103,8 +102,8 @@ handle_request(
     // Respond to GET /k request
     if(req.method() == http::verb::get){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
-        std::vector splitBody;
-        boost::split(splitBody, req.body(), '/')
+        std::vector<std::string> splitBody;
+        boost::split(splitBody, req.body(), '/');
         //
         serverCache.get(splitBody[0]);
         http::response<http::empty_body> res{http::status::ok, req.version()};
@@ -128,8 +127,8 @@ handle_request(
     // Respond to PUT /k/v/s request
     if(req.method() == http::verb::put){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
-        std::vector splitBody;
-        boost::split(splitBody, req.body(), '/')
+        std::vector<std::string> splitBody;
+        boost::split(splitBody, req.body(), '/');
         //
         serverCache.set(splitBody[0], splitBody[1], splitBody[2]);
         http::response<http::empty_body> res{http::status::ok, req.version()};
@@ -142,10 +141,10 @@ handle_request(
     // Respond to DELETE /k request
     if(req.method() == http::verb::delete_){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
-        std::vector splitBody;
-        boost::split(splitBody, req.body(), '/')
+        std::vector<std::string> splitBody;
+        boost::split(splitBody, req.body(), '/');
         //
-        serverCache.delete(splitBody[0]);
+        serverCache.del(splitBody[0]);
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.content_length(size);
@@ -156,8 +155,8 @@ handle_request(
     // Respond to POST /reset request. POST /"anything else" should fail.
     if(req.method() == http::verb::post){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
-        std::vector splitBody;
-        boost::split(splitBody, req.body(), '/')
+        std::vector<std::string> splitBody;
+        boost::split(splitBody, req.body(), '/');
         //
         if(splitBody[0] == "reset"){
             serverCache.reset();

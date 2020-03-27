@@ -29,9 +29,10 @@ public:
     }
     // If value we're emplacing already exists, calculate the size change
     auto existing_value = m_cache_vals.find(key);
-    size_type actual_size;
+    size_type actual_size = size;
     if (existing_value != m_cache_vals.end()) {
       actual_size = size - m_cache_sizes.find(key)->second;
+      std::cout << key << " was size: " << size << ". Its new size is: " << actual_size << ".\n";
     }
     // If it fits, add it to the cache 
     if (m_current_mem + actual_size <= m_maxmem) {
@@ -122,6 +123,8 @@ Cache::Cache(size_type maxmem,
   pImpl_->m_cache_vals = cache_vals;
   pImpl_->m_cache_sizes = cache_sizes;
 }
+
+Cache::Cache(std::string host, std::string port) { return; }
 
 void Cache::set(key_type key, val_type val, size_type size) { pImpl_->set(key, val, size); }
 Cache::val_type Cache::get(key_type key, size_type& val_size) const { return pImpl_->get(key, val_size); }
