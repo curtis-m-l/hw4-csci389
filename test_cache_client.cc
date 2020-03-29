@@ -286,7 +286,7 @@ void test_size_zero_does_not_evict() {
   items.~Cache();
 }
 
-int main(int argc, char** argv)
+int main()
 {
   test_basic_operation();
   test_modify_value();

@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <sstream>
 #include "cache.hh"
 #include "fifo_evictor.hh"
 
@@ -137,7 +138,9 @@ handle_request(
         boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
         Cache::val_type value = splitBody[1].c_str();
-        Cache::size_type size = std::atoi(splitBody[2]);
+        Cache::size_type size;
+        std::stringstream ss(splitBody[2]);
+        ss >> size;
         serverCache->set(splitBody[0], value, size);
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
