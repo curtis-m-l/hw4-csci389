@@ -7,6 +7,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/config.hpp>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 #include <algorithm>
 #include <cstdlib>
 #include <functional>
@@ -16,6 +17,7 @@
 #include <thread>
 #include <vector>
 #include "cache.hh"
+#include "fifo_evictor.hh"
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -34,7 +36,7 @@ template<
     class Send>
 void
 handle_request(
-    Cache serverCache,
+    Cache* serverCache,
     http::request<Body, http::basic_fields<Allocator>>&& req,
     Send&& send)
 {
@@ -52,6 +54,7 @@ handle_request(
     };
 
     // Returns a not found response
+    /*
     auto const not_found =
     [&req](beast::string_view target)
     {
@@ -63,8 +66,10 @@ handle_request(
         res.prepare_payload();
         return res;
     };
+    */
 
     // Returns a server error response
+    /*
     auto const server_error =
     [&req](beast::string_view what)
     {
@@ -76,7 +81,7 @@ handle_request(
         res.prepare_payload();
         return res;
     };
-
+    */
     // Make sure we can handle the method
     if( req.method() != http::verb::get &&
         req.method() != http::verb::put &&
@@ -85,7 +90,7 @@ handle_request(
         req.method() != http::verb::head)
         return send(bad_request("Unknown HTTP-method"));
 
-    auto const size = serverCache.m_current_mem;
+    auto const size = serverCache->space_used();
     
 //********************************************************************************
     // Respond to HEAD request
@@ -93,7 +98,7 @@ handle_request(
     {
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_length, serverCache.m_current_mem);
+        res.set(http::field::content_length, serverCache->space_used());
         res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
@@ -103,10 +108,11 @@ handle_request(
     if(req.method() == http::verb::get){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), '/');
+        boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
-        serverCache.get(splitBody[0]);
-        http::response<http::empty_body> res{http::status::ok, req.version()};
+        Cache::size_type val_size;
+        serverCache->get(splitBody[0], val_size);
+        http::response<http::string_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.content_length(size);
         res.keep_alive(req.keep_alive());
@@ -128,9 +134,11 @@ handle_request(
     if(req.method() == http::verb::put){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), '/');
+        boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
-        serverCache.set(splitBody[0], splitBody[1], splitBody[2]);
+        Cache::val_type value = splitBody[1].c_str();
+        Cache::size_type size = std::atoi(splitBody[2]);
+        serverCache->set(splitBody[0], value, size);
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.content_length(size);
@@ -142,9 +150,10 @@ handle_request(
     if(req.method() == http::verb::delete_){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), '/');
+        boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
-        serverCache.del(splitBody[0]);
+        //bool answer = serverCache->del(splitBody[0]);
+        //TODO: return answer
         http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.content_length(size);
@@ -156,10 +165,10 @@ handle_request(
     if(req.method() == http::verb::post){
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), '/');
+        boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
         if(splitBody[0] == "reset"){
-            serverCache.reset();
+            serverCache->reset();
             http::response<http::empty_body> res{http::status::ok, req.version()};
             res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
             res.content_length(size);
@@ -226,7 +235,7 @@ class session : public std::enable_shared_from_this<session>
 
     beast::tcp_stream stream_;
     beast::flat_buffer buffer_;
-    Cache serverCache_;
+    Cache* serverCache_;
     http::request<http::string_body> req_;
     std::shared_ptr<void> res_;
     send_lambda lambda_;
@@ -235,7 +244,7 @@ public:
     // Take ownership of the stream
     session(
         tcp::socket&& socket,
-        Cache serverCache)
+        Cache* serverCache)
         : stream_(std::move(socket))
         , serverCache_(serverCache)
         , lambda_(*this)
@@ -250,6 +259,7 @@ public:
         // on the I/O objects in this session. Although not strictly necessary
         // for single-threaded contexts, this example code is written to be
         // thread-safe by default.
+        std::cout << "Running a session!\n";
         net::dispatch(stream_.get_executor(),
                       beast::bind_front_handler(
                           &session::do_read,
@@ -288,7 +298,8 @@ public:
             return fail(ec, "read");
 
         // Send the response
-        handle_request(*serverCache_, std::move(req_), lambda_);
+        std::cout << "Sending a response!\n";
+        handle_request(serverCache_, std::move(req_), lambda_);
     }
 
     void
@@ -334,13 +345,13 @@ class listener : public std::enable_shared_from_this<listener>
 {
     net::io_context& ioc_;
     tcp::acceptor acceptor_;
-    Cache serverCache_;
+    Cache* serverCache_;
 
 public:
     listener(
         net::io_context& ioc,
         tcp::endpoint endpoint,
-        Cache serverCache)
+        Cache* serverCache)
         : ioc_(ioc)
         , acceptor_(net::make_strand(ioc))
         , serverCache_(serverCache)
@@ -385,6 +396,7 @@ public:
     void
     run()
     {
+        std::cout << "Running Listener!\n";
         do_accept();
     }
 
@@ -410,8 +422,9 @@ private:
         else
         {
             // Create the session and run it
+            std::cout << "Making a session!\n";
             std::make_shared<session>(
-                std::move(socket))->run();
+                std::move(socket), serverCache_)->run();
         }
 
         // Accept another connection
@@ -421,34 +434,37 @@ private:
 
 //------------------------------------------------------------------------------
 
-int main(int argc, char* argv){
+int main(int argc, char** argv){
 
     // Declare the supported options.
     po::options_description desc("Allowed options");
     desc.add_options()
-        ("-s", po::value<string>()->default_value("127.0.0.1"), "define host server (default 127.0.0.1)")
+        ("-s", po::value<std::string>()->default_value("127.0.0.1"), "define host server (default 127.0.0.1)")
         ("-p", po::value<unsigned short>()->default_value(3618), "define port number (default 3618)")
         ("-t", po::value<int>()->default_value(1), "define thread count (default 1)")
         ("-m", po::value<Cache::size_type>()->default_value(100), "set maxmem (default 100)");
 
     po::variables_map vm;
-    po_store(po::parse_command_line(argc, argv, desc), vm);
+    po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
 
-    auto const address = vm["-s"].as<string>();
-    auto const port = vm["-p"].as<unsigned short>();
+    net::ip::address const address = net::ip::make_address(vm["-s"].as<std::string>());
+    unsigned short const port = vm["-p"].as<unsigned short>();
     auto const threads = vm["-t"].as<int>();
     auto const maxmem = vm["-m"].as<Cache::size_type>();
+    //FIFO_Evictor f_evictor = FIFO_Evictor();
 
-    Cache::Cache serverCache(maxmem);
+    Cache serverCache = Cache(maxmem, 0.75/*&f_evictor*/);
+    Cache* s_cache = &serverCache;
 
     // The io_context is required for all I/O
     net::io_context ioc{threads};
 
     // Create and launch a listening port
+    std::cout << "Making a listener!\n";
     std::make_shared<listener>(
         ioc,
-        tcp::endpoint{address, port}, serverCache)->run();
+        tcp::endpoint{address, port}, s_cache)->run();
 
     // Run the I/O service on the requested number of threads
     std::vector<std::thread> v;

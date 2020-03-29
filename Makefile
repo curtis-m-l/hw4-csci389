@@ -1,7 +1,7 @@
-CXX=g++-8
+CXX=g++
 CXXFLAGS=-Wall -Wextra -pedantic -Werror -std=c++17 -O0 -g
 LDFLAGS=$(CXXFLAGS)
-LIBS=-pthread
+LIBS=-pthread -lboost_system -lboost_program_options
 OBJ=$(SRC:.cc=.o)
 
 all:  cache_server test_cache_lib test_cache_client test_evictors
