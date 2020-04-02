@@ -166,6 +166,8 @@ void test_get_non_existant_item() {
 
 // TESTS WITH AN EVICTOR
 
+/*
+
 void test_basic_evictor() {
   std::cout << "\nTesting basic operations with an evictor...\n";
   test_evictor evictPolicy = FIFO_Evictor();
@@ -186,7 +188,7 @@ void test_basic_evictor() {
 
 void test_cache_bounds_with_evictor() {
   std::cout << "\nTesting cache bounds with evictor...\n";
-  /* Check that the cache doesn't evict items unnecessarily */
+  // Check that the cache doesn't evict items unnecessarily
   test_evictor evictPolicy = FIFO_Evictor();
   Cache::size_type gotItemSize = 0;
   Cache items = Cache(100, 0.75, &evictPolicy);
@@ -244,7 +246,7 @@ void test_eviction() {
 
 void test_evict_all() {
   std::cout << "\nTesting evict_all...\n";
-  /* Set an item large enough to remove all items in the cache */
+  // Set an item large enough to remove all items in the cache
   test_evictor evictPolicy = FIFO_Evictor();
   Cache::size_type gotItemSize = 0;
   Cache items = Cache(100, 0.75, &evictPolicy);
@@ -266,7 +268,7 @@ void test_evict_all() {
 }
 
 void test_size_zero_does_not_evict() {
-  /* Check that an item of size 0 does not prompt an eviction */
+  // Check that an item of size 0 does not prompt an eviction
   std::cout << "\nTesting size zero item does not evict...\n";
   test_evictor evictPolicy = FIFO_Evictor();
   Cache::size_type gotItemSize = 0;
@@ -286,6 +288,8 @@ void test_size_zero_does_not_evict() {
   items.~Cache();
 }
 
+*/
+
 int main()
 {
   test_basic_operation();
@@ -295,11 +299,11 @@ int main()
   test_cache_bounds();
   test_overflow_no_evictor();
   test_get_non_existant_item();
-  test_basic_evictor();
-  test_cache_bounds_with_evictor();
-  test_unnecessary_eviction();
-  test_eviction();
-  test_evict_all();
-  test_size_zero_does_not_evict();
+  //test_basic_evictor();
+  //test_cache_bounds_with_evictor();
+  //test_unnecessary_eviction();
+  //test_eviction();
+  //test_evict_all();
+  //test_size_zero_does_not_evict();
   return 0;
 }

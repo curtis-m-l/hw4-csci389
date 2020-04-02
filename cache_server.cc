@@ -117,11 +117,11 @@ handle_request(
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         std::string bodyMessage;
         if(result == nullptr){
-            bodyMessage = std::string("Could not find that key!");
+            bodyMessage = std::string("/NULL/0");
         }
         else{
             std::string gotValue = result;
-            bodyMessage = std::string("Value: ") + gotValue;
+            bodyMessage = std::string("/") + gotValue + std::string("/" + std::to_string(val_size));
         }
         res.body() = bodyMessage;
         //res.content_length(size);
@@ -152,13 +152,13 @@ handle_request(
         std::stringstream ss(splitBody[3]);
         ss >> size;
         serverCache->set(key, value, size);
-        http::response<http::string_body> res{http::status::ok, req.version()};
+        http::response<http::empty_body> res{http::status::ok, req.version()};
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        std::string bodyMessage = std::string("Put key ") + key + 
-                                  std::string(" with value ") + value + 
-                                  std::string(" and size ") + std::to_string(size) + 
-                                  std::string(" into the cache.\n");
-        res.body() = bodyMessage;
+        //std::string bodyMessage = std::string("Put key ") + key + 
+        //                          std::string(" with value ") + value + 
+        //                          std::string(" and size ") + std::to_string(size) + 
+        //                          std::string(" into the cache.\n");
+        //res.body() = bodyMessage;
         //res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
@@ -183,7 +183,7 @@ handle_request(
         {
             confirmation = "False";
         }
-        std::string bodyMessage = std::string("Deleted key: ") + confirmation;
+        std::string bodyMessage = confirmation;
         res.body() = bodyMessage;
         //res.content_length(size);
         res.keep_alive(req.keep_alive());
@@ -198,9 +198,9 @@ handle_request(
         //
         if(splitBody[1] == "reset"){
             serverCache->reset();
-            http::response<http::string_body> res{http::status::ok, req.version()};
+            http::response<http::empty_body> res{http::status::ok, req.version()};
             res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-            res.body() = "Reset Cache!";
+            //res.body() = "Reset Cache!";
             //res.content_length(size);
             res.keep_alive(req.keep_alive());
             return send(std::move(res));
@@ -483,7 +483,10 @@ int main(int argc, char** argv){
     unsigned short const port = vm["-p"].as<unsigned short>();
     auto const threads = vm["-t"].as<int>();
     auto const maxmem = vm["-m"].as<Cache::size_type>();
-    //FIFO_Evictor f_evictor = FIFO_Evictor();
+	std::cout << "Created cache of size " << maxmem << " with " << threads << " threads\n";
+    std::cout << "Operating with address " << address << ", on port " << port << ".\n";
+
+	//FIFO_Evictor f_evictor = FIFO_Evictor();
 
     Cache serverCache = Cache(maxmem, 0.75/*&f_evictor*/);
     Cache* s_cache = &serverCache;
