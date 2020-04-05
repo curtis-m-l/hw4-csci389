@@ -41,6 +41,7 @@ template<
         http::request<Body, http::basic_fields<Allocator>>&& req,
         Send&& send)
 {
+    std::cout << "Handling a request...\n";
     // Returns a bad request response
     auto const bad_request =
         [&req](beast::string_view why)
@@ -95,9 +96,10 @@ template<
         // Respond to HEAD request
     if (req.method() == http::verb::head)
     {
+        std::cout << "Made it to head request (server-side)\n";
         http::response<http::empty_body> res{ http::status::ok, req.version() };
+        res.insert("Space Used", serverCache->space_used());
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_length, serverCache->space_used());
         res.set(http::field::accept, "Strings");
         res.set(http::field::content_type, "application/json");
         //res.content_length(size);
@@ -121,7 +123,11 @@ template<
         }
         else {
             std::string gotValue = result;
-            bodyMessage = std::string("/") + gotValue + std::string("/" + std::to_string(val_size));
+            bodyMessage = std::string("\"key\": \"") + 
+                          gotValue + 
+                          std::string("\", \"value\": \"" + 
+                          std::to_string(val_size)) + 
+                          "\"";
         }
         res.body() = bodyMessage;
         //res.content_length(size);
@@ -321,15 +327,19 @@ public:
     {
         boost::ignore_unused(bytes_transferred);
 
+        std::cout << " Doing on_read()...\n";
         // This means they closed the connection
         if (ec == http::error::end_of_stream)
             return do_close();
 
+        std::cout << "Made it past the first if statement in on_read...\n";
+
         if (ec)
             return fail(ec, "read");
-
+        
         // Send the response
         //std::cout << "Sending a response!\n";
+        std::cout << "About to handle request...\n";
         handle_request(serverCache_, std::move(req_), lambda_);
     }
 

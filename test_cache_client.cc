@@ -24,6 +24,7 @@ void cache_set(Cache& items, Cache::val_type data, std::string name, Cache::size
 {
     /* Create an item with key 'name', value 'data', and size 'size'. Add it to the cache. */
     Cache::val_type val = data;
+    // TODO: Somehow catch the deallocated cache
     items.set(name, val, size);
     std::cout << "Attempted to add item of size " << size << "\n";
     // Can't use asserts in this function, would require get.
@@ -32,6 +33,7 @@ void cache_set(Cache& items, Cache::val_type data, std::string name, Cache::size
 
 void cache_get(Cache& items, key_type key, Cache::size_type& itemSize, Cache::size_type target_size)
 {
+    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::val_type got_item = items.get(key, itemSize);
     std::cout << "Retrieved Item:" << got_item << "!\n";
     std::cout << "Item size:" << itemSize << "\n";
@@ -42,6 +44,7 @@ void cache_get(Cache& items, key_type key, Cache::size_type& itemSize, Cache::si
 
 void cache_del(Cache& items, key_type key)
 {
+    assert(items && "Cache client was deconstructed unexpectedly");
     bool delete_success = items.del(key);
     assert(delete_success);
     std::cout << "Deleted " << key << " from the cache.\n";
@@ -49,6 +52,7 @@ void cache_del(Cache& items, key_type key)
 
 void cache_space_used(Cache& items, Cache::size_type target_size)
 {
+    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::size_type used_space = items.space_used();
     std::cout << "Current memory used: " << used_space << " | Expected: " << target_size << "\n";
     assert(used_space == target_size);
@@ -56,6 +60,7 @@ void cache_space_used(Cache& items, Cache::size_type target_size)
 
 void cache_reset(Cache& items)
 {
+    assert(items && "Cache client was deconstructed unexpectedly");
     items.reset();
     assert(items.space_used() == 0);
     std::cout << "Cache reset.\n";
@@ -63,6 +68,7 @@ void cache_reset(Cache& items)
 
 void cache_get_failure(Cache& items, key_type key, Cache::size_type& itemSize)
 {
+    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::val_type got_item = items.get(key, itemSize);
     assert(got_item == nullptr);
 }
@@ -73,7 +79,7 @@ void test_basic_operation() {
     /* Test basic functionality of a cache with no optional parameters */
     std::cout << "\nTesting basic operations...\n";
     Cache items(host, port);
-    assert(items.space_used() == 0 && "Cache initialized at non-zero size\n");
+    cache_space_used(items, 0);
     Cache::size_type gotItemSize = 0;
     // Set an item, verify that it's the right size
     cache_set(items, "Abcd", "ItemA", 5);
