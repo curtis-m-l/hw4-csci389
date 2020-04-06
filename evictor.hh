@@ -1,5 +1,5 @@
 /*
- * Declare interface for eviction policies and a few implementations.
+ * Declare interface for eviction policies and a few implementations. 
  */
 
 #pragma once

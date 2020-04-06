@@ -101,7 +101,7 @@ void test_modify_value() {
 }
 
 void test_reduction() {
-    /* Checks that modifying an object does not prompt a rejection/eviction for some reason */
+    /* Checks that modifying an object does not prompt a rejection/eviction for some reason */ 
     std::cout << "\nTesting 'reduction'...\n";
     Cache items(10);
     Cache::size_type gotItemSize = 0;

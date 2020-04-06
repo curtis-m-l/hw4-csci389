@@ -1,6 +1,6 @@
 /*
 void test_eviction(){
-    std::cout << "\nDirectly testing evictor...\n";
+    std::cout << "\nDirectly testing evictor...\n"; 
     FIFO_Evictor evictPolicy;
     //Series of touchkeys/evicts to check FIFO ordering
     evictPolicy.touch_key("ItemA");
