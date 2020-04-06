@@ -31,4 +31,4 @@ test: all
 
 valgrind: all
 	valgrind --leak-check=full --show-leak-kinds=all ./test_cache_lib
-	valgrind --leak-check=full --show-leak-kinds=all ./test_evictor
+	valgrind --leak-check=full --show-leak-kinds=all ./test_evictors
