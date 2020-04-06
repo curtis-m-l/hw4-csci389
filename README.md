@@ -1,13 +1,13 @@
-#CSCI-389 Homework #4: "Let's Network"
-##By Maxx Curtis and Casey Harris
+# CSCI-389 Homework #4: "Let's Network"
+## By Maxx Curtis and Casey Harris
 
-###Preparation:
+### Preparation:
     - We used our own code from HW3 as a baseline for this assignment. We fixed a few key errors we had found
     with our code before beginning (such as our tests only passing single characters, instead of testing the
     full capabilities of passing strings).
 
 
-###Server:
+### Server:
     - We used Boost::Beast to create both our server and client. The server is asynchronous, and is modeled
       off of the example asynchronous server from Boost's documentation.
       https://www.boost.org/doc/libs/1_72_0/libs/beast/example/http/server/async/http_server_async.cpp
@@ -37,7 +37,7 @@
       sets when the cache was too full) worked fine.
 
 
-###Client:
+### Client:
     - Similarly, the client wa based off of the synchronous client example from Boost's documentation:
       https://www.boost.org/doc/libs/1_72_0/libs/beast/example/http/client/sync/http_client_sync.cpp
 
@@ -54,7 +54,7 @@
       reconstruction between tests.
 
 
-###Test_Cache_Client:
+### Test_Cache_Client:
     - This file is, essentially, a copy-paste of test_cache, modified to use the networked cache constructor. All
     of the tests and calls are identical to the non-networked version.
 
