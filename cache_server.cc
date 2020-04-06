@@ -97,11 +97,13 @@ template<
     if (req.method() == http::verb::head)
     {
         std::cout << "Made it to head request (server-side)\n";
-        http::response<http::empty_body> res{ http::status::ok, req.version() };
-        res.insert("Space Used", serverCache->space_used());
+        http::response<http::empty_body> res { http::status::ok, req.version() };
+        res.insert("Space-Used", std::to_string(serverCache->space_used()));
+        //BOOST_ASSERT(res["Space Used"] == field_value);
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         res.set(http::field::accept, "Strings");
         res.set(http::field::content_type, "application/json");
+        //auto const size = res.body().size();
         //res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
@@ -130,7 +132,8 @@ template<
                           "\"";
         }
         res.body() = bodyMessage;
-        //res.content_length(size);
+        auto const size = bodyMessage.size();
+        res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
         /*
@@ -165,6 +168,7 @@ template<
         //                          std::string(" and size ") + std::to_string(size) + 
         //                          std::string(" into the cache.\n");
         //res.body() = bodyMessage;
+        //auto const size = res.body().size();
         //res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
@@ -177,7 +181,6 @@ template<
         boost::split(splitBody, req.body(), boost::is_any_of("/"));
         //
         bool answer = serverCache->del(splitBody[1]);
-        //TODO: return answer
         http::response<http::string_body> res{ http::status::ok, req.version() };
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         //Computer is unhappy with boolean concatenation.
@@ -191,7 +194,7 @@ template<
         }
         std::string bodyMessage = confirmation;
         res.body() = bodyMessage;
-        //res.content_length(size);
+        res.content_length(bodyMessage.size());
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
     }
@@ -207,13 +210,13 @@ template<
             http::response<http::empty_body> res{ http::status::ok, req.version() };
             res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
             //res.body() = "Reset Cache!";
-            //res.content_length(size);
+            //res.content_length(res.body().size());
             res.keep_alive(req.keep_alive());
             return send(std::move(res));
         }
         else {
             http::response<http::string_body> res{ http::status::not_found, req.version() };
-            //res.content_length(size);
+            //res.content_length(res.body().size());
             res.body() = splitBody[1];
             res.keep_alive(req.keep_alive());
             return send(std::move(res));

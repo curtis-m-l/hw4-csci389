@@ -22,23 +22,28 @@ class Cache::Impl {
 public:
     std::string host_;
     std::string port_;
-    double HTTPVersion_ = 1.1;
-    beast::tcp_stream* stream_ ;
-    auto const results_;
+    unsigned HTTPVersion_ = 11;
+    //beast::tcp_stream* stream_ ;
+    //boost::asio::ip::basic_resolver_results<tcp>  results_;
 
     Impl(std::string host, std::string port){
-        std::cout << "Impl constructor start\n";
         host_ = host;
         port_ = port;
-        std::cout << "Impl constructor end\n";
+        return;
     }
 
     ~Impl() {
         // Gracefully close the socket
-        
+        std::cout << "Cache deconstructed\n";
+        /*
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
+
         beast::error_code ec;
-        stream_->socket().shutdown(tcp::socket::shutdown_both, ec);
-        
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
+        */
         // not_connected happens sometimes
         // so don't bother reporting it.
         /*
@@ -67,15 +72,20 @@ public:
     */
 
     void set(key_type key, val_type val, size_type size) {
+        //Set up a new ioc and stream
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
         // Set up an HTTP SET request message
-        stream_->connect(results_);
+        stream_.connect(results_);
         std::string requestBody = "/" + key + "/" + val + "/" + std::to_string(size);
         http::request<http::string_body> req{ http::verb::put, requestBody, HTTPVersion_ };
         req.set(http::field::host, host_);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
-        http::write(*stream_, req);
+        http::write(stream_, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
@@ -84,22 +94,30 @@ public:
         http::response<http::string_body> res;
 
         // Receive the HTTP response
-        http::read(*stream_, buffer, res);
+        http::read(stream_, buffer, res);
+
+        beast::error_code ec;
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
         // Write the message to standard out
         std::cout << res << std::endl;
     }
 
     val_type get(key_type key, size_type& val_size) {
+        //Set up a new ioc
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
         // Set up an HTTP GET request message
-        stream_->connect(results_);
+        stream_.connect(results_);
         std::string requestBody = "/" + key;
         http::request<http::string_body> req{ http::verb::get, requestBody, HTTPVersion_ };
         req.set(http::field::host, host_);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
-        http::write(*stream_, req);
+        http::write(stream_, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
@@ -108,7 +126,10 @@ public:
         http::response<http::string_body> res;
 
         // Receive the HTTP response
-        http::read(*stream_, buffer, res);
+        http::read(stream_, buffer, res);
+
+        beast::error_code ec;
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
         // Write the message to standard out
         std::cout << res << std::endl;
@@ -122,15 +143,20 @@ public:
     }
 
     bool del(key_type key) {
+        //Set up a new ioc
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
         // Set up an HTTP DELETE request message
-        stream_->connect(results_);
+        stream_.connect(results_);
         std::string requestBody = "/" + key;
         http::request<http::string_body> req{ http::verb::delete_, requestBody, HTTPVersion_ };
         req.set(http::field::host, host_);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
-        http::write(*stream_, req);
+        http::write(stream_, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
@@ -139,7 +165,10 @@ public:
         http::response<http::string_body> res;
 
         // Receive the HTTP response
-        http::read(*stream_, buffer, res);
+        http::read(stream_, buffer, res);
+
+        beast::error_code ec;
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
         // Write the message to standard out
         std::cout << res << std::endl;
@@ -152,47 +181,61 @@ public:
     }
 
     size_type space_used() {
+        //Set up a new ioc
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
         // Set up an HTTP HEAD request message
-        stream_->connect(results_);
         std::cout << "Setting up HEAD (space used) request...\n";
-        http::request<http::empty_body> req;
-        req.version(HTTPVersion_);
-        req.method(http::verb::head);
+        stream_.connect(results_);
+        std::cout << "Connected successfully in space_used (client side)\n";
+        http::request<http::string_body> req{http::verb::head, "/", HTTPVersion_};
+        //req.version(HTTPVersion_);
+        //req.method(http::verb::head);
         req.set(http::field::host, host_);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
+        req.set(http::field::content_length, req.body().size());
         std::cout << "Writing request to the stream...\n";
         // Send the HTTP request to the remote host
-        http::write(*stream_, req); 
+        http::write(stream_, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
 
         // Declare a container to hold the response
         http::response<http::string_body> res;
+
         std::cout << "Reading response from the stream...\n";
         // Receive the HTTP response
-        http::read(*stream_, buffer, res); // PROBLEM SPOT
+        http::read(stream_, buffer, res); // PROBLEM SPOT
+
+        std::cout << "Closing the socket in space_used...\n";
+        beast::error_code ec;
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
         std::cout << "Sending back results...\n";
         // Write the message to standard out
         std::cout << res << std::endl;
-        //https://github.com/boostorg/beast/issues/819
-        std::string result = res.body();
-        Cache::size_type spaceInUse;
-        std::stringstream ss(result);
-        ss >> spaceInUse;
-        return spaceInUse;
+        std::string space_used_return = res["Space Used"].data();
+        Cache::size_type toRe = std::stoi(space_used_return);
+        return toRe;
     }
 
     void reset() {
+        //Set up a new ioc
+        net::io_context ioc;
+        tcp::resolver resolver(ioc);
+        auto const results_ = resolver.resolve(host_, port_);
+        beast::tcp_stream stream_(ioc);
         // Set up an HTTP POST request message
-        stream_->connect(results_);
+        stream_.connect(results_);
         http::request<http::string_body> req{ http::verb::post, "/reset", HTTPVersion_ };
         req.set(http::field::host, host_);
         req.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
 
         // Send the HTTP request to the remote host
-        http::write(*stream_, req);
+        http::write(stream_, req);
 
         // This buffer is used for reading and must be persisted
         beast::flat_buffer buffer;
@@ -201,7 +244,10 @@ public:
         http::response<http::dynamic_body> res;
 
         // Receive the HTTP response
-        http::read(*stream_, buffer, res);
+        http::read(stream_, buffer, res);
+
+        beast::error_code ec;
+        stream_.socket().shutdown(tcp::socket::shutdown_both, ec);
 
         // Write the message to standard out
         std::cout << res << std::endl;
@@ -221,21 +267,18 @@ Cache::Cache(std::string host, std::string port) {
     Impl cache_Impl(host, port);
     pImpl_ = (std::make_unique<Impl>(cache_Impl));
 
-    net::io_context ioc;
-    tcp::resolver resolver(ioc);
-    pImpl_->stream_ = new beast::tcp_stream(ioc);
+    // net::io_context ioc;
+    // tcp::resolver resolver(ioc);
+    // pImpl_->stream_ = new beast::tcp_stream(ioc);
 
     // Look up the domain name
-    pImpl->results_ = resolver.resolve(host, port);
+    // pImpl_->results_ = resolver.resolve(host, port);
     std::cout << "Cache constructed\n";
 }
 
 void Cache::set(key_type key, val_type val, size_type size) { pImpl_->set(key, val, size); }
 Cache::val_type Cache::get(key_type key, size_type& val_size) const { return pImpl_->get(key, val_size); }
 bool Cache::del(key_type key) { return pImpl_->del(key); }
-Cache::size_type Cache::space_used() const {
-    std::cout << "Making call to cache call to Impl.space_used()...\n";
-    return pImpl_->space_used(); 
-}
+Cache::size_type Cache::space_used() const { return pImpl_->space_used(); }
 void Cache::reset() { pImpl_->reset(); }
 Cache::~Cache() { pImpl_->reset(); }
