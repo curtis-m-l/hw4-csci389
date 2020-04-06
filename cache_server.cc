@@ -41,7 +41,6 @@ template<
         http::request<Body, http::basic_fields<Allocator>>&& req,
         Send&& send)
 {
-    std::cout << "Handling a request...\n";
     // Returns a bad request response
     auto const bad_request =
         [&req](beast::string_view why)
@@ -55,35 +54,6 @@ template<
         return res;
     };
 
-    // Returns a not found response
-    /*
-    auto const not_found =
-    [&req](beast::string_view target)
-    {
-        http::response<http::string_body> res{http::status::not_found, req.version()};
-        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_type, "text/html");
-        res.keep_alive(req.keep_alive());
-        res.body() = "The resource '" + std::string(target) + "' was not found.";
-        res.prepare_payload();
-        return res;
-    };
-    */
-
-    // Returns a server error response
-    /*
-    auto const server_error =
-    [&req](beast::string_view what)
-    {
-        http::response<http::string_body> res{http::status::internal_server_error, req.version()};
-        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_type, "text/html");
-        res.keep_alive(req.keep_alive());
-        res.body() = "An error occurred: '" + std::string(what) + "'";
-        res.prepare_payload();
-        return res;
-    };
-    */
     // Make sure we can handle the method
     if (req.method() != http::verb::get &&
         req.method() != http::verb::put &&
@@ -96,12 +66,11 @@ template<
         // Respond to HEAD request
     if (req.method() == http::verb::head)
     {
-        std::cout << "Made it to head request (server-side)\n";
+        std::cout << "\nHandling a HEAD request...\n";
         http::response<http::empty_body> res { http::status::ok, req.version() };
         res.insert("Space-Used", std::to_string(serverCache->space_used()));
-        //BOOST_ASSERT(res["Space Used"] == field_value);
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::accept, "Strings");
+        res.set(http::field::accept, "/k/v");
         res.set(http::field::content_type, "application/json");
         //auto const size = res.body().size();
         //res.content_length(size);
@@ -111,9 +80,10 @@ template<
 
     // Respond to GET /k request
     if (req.method() == http::verb::get) {
+        std::cout << "\nHandling a GET request...\n";
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), boost::is_any_of("/"));
+        boost::split(splitBody, req.target().data(), boost::is_any_of("/"));
         //
         Cache::size_type val_size;
         auto result = serverCache->get(splitBody[1], val_size);
@@ -121,40 +91,31 @@ template<
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
         std::string bodyMessage;
         if (result == nullptr) {
-            bodyMessage = std::string("/NULL/0");
+            bodyMessage = std::string("NULL");
         }
         else {
             std::string gotValue = result;
             bodyMessage = std::string("\"key\": \"") + 
-                          gotValue + 
+                          splitBody[1] + 
                           std::string("\", \"value\": \"" + 
-                          std::to_string(val_size)) + 
-                          "\"";
+                          std::string(result)) + 
+                          std::string("\", \"size\": \"" +
+                          std::to_string(val_size)) +
+                          std::string("\"");
         }
         res.body() = bodyMessage;
         auto const size = bodyMessage.size();
         res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
-        /*
-        http::response<http::file_body> res{
-            std::piecewise_construct,
-            std::make_tuple(std::move(body)),
-            std::make_tuple(http::status::ok, req.version())};
-        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        res.set(http::field::content_type, mime_type(path));
-        res.content_length(size);
-        res.keep_alive(req.keep_alive());
-        return send(std::move(res));
-        */
     }
 
     // Respond to PUT /k/v/s request
     if (req.method() == http::verb::put) {
+        std::cout << "\nHandling a PUT request...\n";
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), boost::is_any_of("/"));
-        //
+        boost::split(splitBody, req.target().data(), boost::is_any_of("/"));
         key_type key = splitBody[1];
         Cache::val_type value = splitBody[2].c_str();
         Cache::size_type size;
@@ -163,22 +124,16 @@ template<
         serverCache->set(key, value, size);
         http::response<http::empty_body> res{ http::status::ok, req.version() };
         res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-        //std::string bodyMessage = std::string("Put key ") + key + 
-        //                          std::string(" with value ") + value + 
-        //                          std::string(" and size ") + std::to_string(size) + 
-        //                          std::string(" into the cache.\n");
-        //res.body() = bodyMessage;
-        //auto const size = res.body().size();
-        //res.content_length(size);
         res.keep_alive(req.keep_alive());
         return send(std::move(res));
     }
 
     // Respond to DELETE /k request
     if (req.method() == http::verb::delete_) {
+        std::cout << "\nHandling a DELETE request...\n";
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), boost::is_any_of("/"));
+        boost::split(splitBody, req.target().data(), boost::is_any_of("/"));
         //
         bool answer = serverCache->del(splitBody[1]);
         http::response<http::string_body> res{ http::status::ok, req.version() };
@@ -201,26 +156,23 @@ template<
 
     // Respond to POST /reset request. POST /"anything else" should fail.
     if (req.method() == http::verb::post) {
+        std::cout << "\nHandling a POST request...\n";
         // http://www.martinbroadhurst.com/how-to-split-a-string-in-c.html, method 5
         std::vector<std::string> splitBody;
-        boost::split(splitBody, req.body(), boost::is_any_of("/"));
-        //
+        boost::split(splitBody, req.target().data(), boost::is_any_of("/"));
+        
+        http::response<http::empty_body> res{ http::status::ok, req.version() };
+        
         if (splitBody[1] == "reset") {
             serverCache->reset();
-            http::response<http::empty_body> res{ http::status::ok, req.version() };
-            res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-            //res.body() = "Reset Cache!";
-            //res.content_length(res.body().size());
-            res.keep_alive(req.keep_alive());
-            return send(std::move(res));
         }
         else {
-            http::response<http::string_body> res{ http::status::not_found, req.version() };
-            //res.content_length(res.body().size());
-            res.body() = splitBody[1];
-            res.keep_alive(req.keep_alive());
-            return send(std::move(res));
+            res.result(http::status::not_found);
         }
+        
+        res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.keep_alive(req.keep_alive());
+        return send(std::move(res));
     }
 }
 //********************************************************************************
@@ -299,7 +251,7 @@ public:
         // on the I/O objects in this session. Although not strictly necessary
         // for single-threaded contexts, this example code is written to be
         // thread-safe by default.
-        //std::cout << "Running a session!\n";
+
         net::dispatch(stream_.get_executor(),
             beast::bind_front_handler(
                 &session::do_read,
@@ -329,20 +281,15 @@ public:
             std::size_t bytes_transferred)
     {
         boost::ignore_unused(bytes_transferred);
-
-        std::cout << " Doing on_read()...\n";
         // This means they closed the connection
         if (ec == http::error::end_of_stream)
             return do_close();
 
-        std::cout << "Made it past the first if statement in on_read...\n";
 
         if (ec)
             return fail(ec, "read");
         
         // Send the response
-        //std::cout << "Sending a response!\n";
-        std::cout << "About to handle request...\n";
         handle_request(serverCache_, std::move(req_), lambda_);
     }
 
@@ -440,7 +387,6 @@ public:
     void
         run()
     {
-        //std::cout << "Running Listener!\n";
         do_accept();
     }
 
@@ -466,7 +412,6 @@ private:
         else
         {
             // Create the session and run it
-            //std::cout << "Making a session!\n";
             std::make_shared<session>(
                 std::move(socket), serverCache_)->run();
         }
@@ -486,12 +431,12 @@ int main(int argc, char** argv) {
         ("-s", po::value<std::string>()->default_value("127.0.0.1"), "define host server (default 127.0.0.1)")
         ("-p", po::value<unsigned short>()->default_value(3618), "define port number (default 3618)")
         ("-t", po::value<int>()->default_value(1), "define thread count (default 1)")
-        ("-m", po::value<Cache::size_type>()->default_value(10), "set maxmem (default 100)");
+        ("-m", po::value<Cache::size_type>()->default_value(10), "set maxmem (default 10)");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
-
+    
     net::ip::address const address = net::ip::make_address(vm["-s"].as<std::string>());
     unsigned short const port = vm["-p"].as<unsigned short>();
     auto const threads = vm["-t"].as<int>();
@@ -503,13 +448,11 @@ int main(int argc, char** argv) {
 
     Cache serverCache = Cache(maxmem, 0.75/*&f_evictor*/);
     Cache* s_cache = &serverCache;
-    //std::cout << s_cache << "\n";
 
     // The io_context is required for all I/O
     net::io_context ioc{ threads };
 
     // Create and launch a listening port
-    //std::cout << "Making a listener!\n";
     std::make_shared<listener>(
         ioc,
         tcp::endpoint{ address, port }, s_cache)->run();

@@ -13,8 +13,6 @@
  */
 
 class FIFO_Evictor : public Evictor {
-
-  ~FIFO_Evictor();
   private:
     // Deques are good for dual-ended operations (vectors have no push_front). 
     // https://en.cppreference.com/w/cpp/container/deque

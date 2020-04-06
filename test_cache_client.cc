@@ -22,20 +22,18 @@ std::string port = "3618";
 
 void cache_set(Cache& items, Cache::val_type data, std::string name, Cache::size_type size)
 {
+    std::cout << "Attempting to add item of size " << size << "\n";
     /* Create an item with key 'name', value 'data', and size 'size'. Add it to the cache. */
     Cache::val_type val = data;
-    // TODO: Somehow catch the deallocated cache
     items.set(name, val, size);
-    std::cout << "Attempted to add item of size " << size << "\n";
     // Can't use asserts in this function, would require get.
     // Asserted in main()
 }
 
 void cache_get(Cache& items, key_type key, Cache::size_type& itemSize, Cache::size_type target_size)
 {
-    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::val_type got_item = items.get(key, itemSize);
-    std::cout << "Retrieved Item:" << got_item << "!\n";
+    std::cout << "Retrieved Item: " << got_item << "\n";
     std::cout << "Item size:" << itemSize << "\n";
     assert(got_item != nullptr && "Cache could not retrieve requested item!\n");
     assert(itemSize == target_size && "get() did not update size of its second param correctly!\n");
@@ -44,7 +42,6 @@ void cache_get(Cache& items, key_type key, Cache::size_type& itemSize, Cache::si
 
 void cache_del(Cache& items, key_type key)
 {
-    assert(items && "Cache client was deconstructed unexpectedly");
     bool delete_success = items.del(key);
     assert(delete_success);
     std::cout << "Deleted " << key << " from the cache.\n";
@@ -52,7 +49,6 @@ void cache_del(Cache& items, key_type key)
 
 void cache_space_used(Cache& items, Cache::size_type target_size)
 {
-    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::size_type used_space = items.space_used();
     std::cout << "Current memory used: " << used_space << " | Expected: " << target_size << "\n";
     assert(used_space == target_size);
@@ -60,7 +56,6 @@ void cache_space_used(Cache& items, Cache::size_type target_size)
 
 void cache_reset(Cache& items)
 {
-    assert(items && "Cache client was deconstructed unexpectedly");
     items.reset();
     assert(items.space_used() == 0);
     std::cout << "Cache reset.\n";
@@ -68,12 +63,28 @@ void cache_reset(Cache& items)
 
 void cache_get_failure(Cache& items, key_type key, Cache::size_type& itemSize)
 {
-    assert(items && "Cache client was deconstructed unexpectedly");
     Cache::val_type got_item = items.get(key, itemSize);
     assert(got_item == nullptr);
 }
 
 // TEST CASES
+
+void test_reduction() {
+    // Checks that modifying an object does not prompt a rejection/eviction for some reason
+    std::cout << "\nTesting 'reduction'...\n";
+    Cache items(host, port);
+    Cache::size_type gotItemSize = 0;
+    // Fill the cache
+    cache_set(items, "Abc", "ItemA", 4);
+    //cache_set(items, "Bc", "ItemB", 3);
+    //cache_set(items, "Cd", "ItemC", 3);
+    // Make one of the existing values smaller
+    // cache_set(items, "A", "ItemA", 2);
+    // Verify that it was not rejected
+    cache_get(items, "ItemA", gotItemSize, 4);
+    cache_reset(items);
+    items.~Cache();
+}
 
 void test_basic_operation() {
     /* Test basic functionality of a cache with no optional parameters */
@@ -106,22 +117,7 @@ void test_modify_value() {
     cache_set(items, "Ab", "ItemA", 3);
     cache_space_used(items, 3);
     cache_get(items, "ItemA", gotItemSize, 3);
-    items.~Cache();
-}
-
-void test_reduction() {
-    /* Checks that modifying an object does not prompt a rejection/eviction for some reason */
-    std::cout << "\nTesting 'reduction'...\n";
-    Cache items(host, port);
-    Cache::size_type gotItemSize = 0;
-    // Fill the cache
-    cache_set(items, "Abc", "ItemA", 4);
-    cache_set(items, "Bc", "ItemB", 3);
-    cache_set(items, "Cd", "ItemC", 3);
-    // Make one of the existing values smaller
-    cache_set(items, "A", "ItemA", 2);
-    // Verify that it was not rejected
-    cache_get(items, "ItemA", gotItemSize, 2);
+    cache_reset(items);
     items.~Cache();
 }
 
@@ -129,10 +125,13 @@ void test_set_object_cache_size() {
     /* Sets an object of size 'maxmem' and verifies that it was added properly */
     std::cout << "\nTesting 'set object of cache size'...\n";
     Cache items(host, port);
+    Cache::size_type gotItemSize = 0;
     // Set an item that fills the entire cache
     cache_set(items, "Abcdefghi", "ItemA", 10);
+    cache_get(items, "ItemA", gotItemSize, 10);
     // Check that it worked
     cache_space_used(items, 10);
+    cache_reset(items);
     items.~Cache();
 }
 
@@ -142,6 +141,7 @@ void test_cache_bounds() {
     Cache items(host, port);
     cache_set(items, "Abcdefghij", "ItemA", 11);
     cache_space_used(items, 0);
+    cache_reset(items);
     items.~Cache();
 }
 
@@ -152,8 +152,8 @@ void test_overflow_no_evictor() {
     cache_set(items, "Abcd", "ItemA", 5);
     cache_set(items, "Bc", "ItemB", 3);
     cache_set(items, "Cde", "ItemC", 4);
-
     cache_space_used(items, 8);
+    cache_reset(items);
     items.~Cache();
 }
 
@@ -170,6 +170,7 @@ void test_get_non_existant_item() {
     cache_del(items, "ItemA");
     cache_get_failure(items, "ItemA", gotItemSize);
     cache_space_used(items, 0);
+    cache_reset(items);
     items.~Cache();
 }
 /*
@@ -299,9 +300,9 @@ void test_size_zero_does_not_evict() {
 */
 int main()
 {
+    test_reduction();
     test_basic_operation();
     test_modify_value();
-    test_reduction();
     test_set_object_cache_size();
     test_cache_bounds();
     test_overflow_no_evictor();

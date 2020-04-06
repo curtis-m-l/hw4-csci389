@@ -5,6 +5,8 @@
 #include "fifo_evictor.hh"
 
 /*
+
+
 */
 
 class Cache::Impl {
@@ -25,7 +27,6 @@ public:
   void set(key_type key, val_type val, size_type size) {
     // If data is larger than cache capacity
     if (size > m_maxmem) {
-      std::cout << "Data is too large to fit in the cache!\n";
       return;
     }
     // If value we're emplacing already exists, calculate the size change
@@ -55,7 +56,6 @@ public:
     else {
       // If we have no eviction policy, reject it
       if (m_evictor == nullptr) {
-        std::cout << "Cache is too full!\n";
       }
       // Otherwise, evict stuff until it fits
       else {
@@ -145,4 +145,4 @@ Cache::val_type Cache::get(key_type key, size_type& val_size) const { return pIm
 bool Cache::del(key_type key) { return pImpl_->del(key); }
 Cache::size_type Cache::space_used() const { return pImpl_->space_used(); }
 void Cache::reset() { pImpl_->reset(); }
-Cache::~Cache() { pImpl_.reset(); }
+Cache::~Cache() { pImpl_->reset(); }
